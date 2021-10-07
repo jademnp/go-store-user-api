@@ -13,7 +13,7 @@ func CreateUser(c *gin.Context) {
 	var user users.User
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
-		restErr := errors.BadRequestError()
+		restErr := errors.BadRequestError("bad json body")
 		c.JSON(restErr.Status, restErr)
 		return
 	}
