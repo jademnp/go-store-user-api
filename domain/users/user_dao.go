@@ -9,15 +9,14 @@ import (
 	"github.com/jademnp/go-store-user-api/utils/errors"
 )
 
-var db = make(map[int64]*User)
-
 const (
 	indexUniqueEmail = "users_un"
-	quereyInsertUser = "insert into users (first_name,last_name,email,created_date) values ($1,$2,$3,$4) RETURNING id;"
+	queryInsertUser  = "insert into users (first_name,last_name,email,created_date) values ($1,$2,$3,$4) RETURNING id;"
+	querySelectUser  = "select first_name,last_name,email,created_date from users where id = $1"
 )
 
 func (user *User) Save() *errors.RestErr {
-	stmt, err := users_db.Client.Prepare(quereyInsertUser)
+	stmt, err := users_db.Client.Prepare(queryInsertUser)
 	if err != nil {
 		return errors.InternalServerError(err.Error())
 	}
@@ -40,17 +39,15 @@ func (user *User) Save() *errors.RestErr {
 }
 
 func (user *User) Get() *errors.RestErr {
-	if err := users_db.Client.Ping(); err != nil {
-		panic(err)
+	stmt, err := users_db.Client.Prepare(querySelectUser)
+	if err != nil {
+		return errors.InternalServerError(err.Error())
 	}
-	result := db[user.Id]
-	if result == nil {
-		return errors.NotFoundError(fmt.Sprintf("user id %d not found", user.Id))
+	defer stmt.Close()
+	result := stmt.QueryRow(user.Id)
+	err = result.Scan(&user.FirstName, &user.LastName, &user.Email, &user.CreatedDate)
+	if err != nil {
+		return errors.InternalServerError(err.Error())
 	}
-	user.Id = result.Id
-	user.FirstName = result.FirstName
-	user.LastName = result.LastName
-	user.Email = result.Email
-	user.CreatedDate = result.CreatedDate
 	return nil
 }
